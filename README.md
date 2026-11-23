@@ -78,6 +78,14 @@ Inputs are active **LOW** (terminal shorted to the input 0V). Relays are ON when
 2. กด Upload ตามปกติ
 3. ถอดจั๊มป์ แล้วปิดเปิดไฟ
 
+## Serial Monitor เปิดไม่ได้? (สาย CH340)
+
+สาย USB-Serial ชิป CH340 บางรุ่น **ไม่ยอมตั้ง baud เดิมซ้ำ** ทำให้เปิดพอร์ตไม่ได้
+(ตั้งแต่ v1.0.1 ตัว upload แก้ให้อัตโนมัติหลังโหลดโปรแกรม) ถ้ายังเจอ:
+* เปลี่ยน baud ใน Serial Monitor ไปค่าอื่นแล้วเปลี่ยนกลับ หรือ
+* ถอดสาย USB แล้วเสียบใหม่
+* แนะนำใช้สาย **CP2102 / FT232** จะไม่มีปัญหานี้
+
 ## How "upload without jumper" works
 
 The board variant starts `Serial` at 9600 before `setup()`, and a 1 ms SysTick hook watches the

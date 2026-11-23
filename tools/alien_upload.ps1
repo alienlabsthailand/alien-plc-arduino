@@ -73,4 +73,7 @@ if (-not $inBoot) {
 
 & $flash -Port $Port -Baud 9600 -Erase -Bin $Bin -Go
 if (-not $?) { throw "flash failed" }
+# Some CH340 drivers refuse to re-apply the same baud rate. The bootloader leaves the port at 9600 8E1,
+# which would make Serial Monitor (9600 8N1) fail to open. Park the port on an unusual rate instead.
+cmd /c "mode $Port BAUD=4800 PARITY=N DATA=8 STOP=1" | Out-Null
 Write-Host "Done. Program is running."

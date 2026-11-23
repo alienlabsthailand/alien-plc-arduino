@@ -12,15 +12,15 @@
                                            {
                                                "name":  "Alien Labs Boards",
                                                "architecture":  "stm32",
-                                               "version":  "1.0.0",
+                                               "version":  "1.0.1",
                                                "category":  "Contributed",
                                                "help":  {
                                                             "online":  "https://github.com/alienlabsthailand/alien-plc-arduino"
                                                         },
-                                               "url":  "https://github.com/alienlabsthailand/alien-plc-arduino/releases/download/v1.0.0/alien-plc-1.0.0.zip",
-                                               "archiveFileName":  "alien-plc-1.0.0.zip",
-                                               "checksum":  "SHA-256:a7c6c9489e58c77989c5f7740571287ada808a34423b8a3c0d2084ed3ac98768",
-                                               "size":  "36743",
+                                               "url":  "https://github.com/alienlabsthailand/alien-plc-arduino/releases/download/v1.0.1/alien-plc-1.0.1.zip",
+                                               "archiveFileName":  "alien-plc-1.0.1.zip",
+                                               "checksum":  "SHA-256:7bcf7f6aaa270723feca33e41ad8ab04c2bdba90613a5a63e51fb5756cfb157f",
+                                               "size":  "37124",
                                                "boards":  [
                                                               {
                                                                   "name":  "Alien PLC 20MR (12 in / 8 relay)"

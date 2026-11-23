@@ -3,7 +3,7 @@
 # (boards.txt: build.core=STMicroelectronics:arduino). This file only adds the upload tool.
 
 name=Alien Labs Boards
-version=1.0.0
+version=1.0.1
 
 # ---------------------------------------------------------------------------
 # Upload: send "!BOOT" to the running program (no BOOT0 jumper), then flash over the
