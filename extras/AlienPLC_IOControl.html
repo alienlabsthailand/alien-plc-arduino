@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alien PLC I/O</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
+    --accent: #2563eb; --on: #16a34a; --on-bg: #dcfce7; --off-bg: #eef0f3; --warn: #b45309; --err: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151b; --panel: #1b2029; --text: #e6e9ef; --muted: #9aa3b2; --line: #2a313d;
+      --accent: #60a5fa; --on: #4ade80; --on-bg: #14361f; --off-bg: #252b36; --warn: #fbbf24; --err: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 "Segoe UI", "Leelawadee UI", Tahoma, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+  h1 { font-size: 20px; margin: 0; flex: 1 1 auto; }
+  .status { font-size: 13px; color: var(--muted); }
+  .status.ok { color: var(--on); } .status.err { color: var(--err); }
+  .runbadge { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--off-bg); color: var(--muted); border: 1px solid var(--line); }
+  .runbadge.run { background: var(--on-bg); color: var(--on); border-color: var(--on); }
+  .runbadge.stop { color: var(--err); border-color: var(--err); }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+           border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  section h2 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  section h2 .hint { font-weight: normal; font-size: 12px; color: var(--muted); }
+  .grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  .grid.wide { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .lamp { border: 1px solid var(--line); border-radius: 10px; padding: 10px; text-align: center; background: var(--off-bg); }
+  .lamp.on { background: var(--on-bg); border-color: var(--on); }
+  .lamp.recent { border: 2px solid var(--warn); }
+  .lamp .cnt { font-size: 12px; color: var(--warn); }
+  .lamp .name { font-weight: 600; font-size: 16px; }
+  .lamp .pin { font-size: 12px; color: var(--muted); }
+  .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; background: #9ca3af; margin-bottom: 4px; }
+  .on .dot { background: var(--on); box-shadow: 0 0 8px var(--on); }
+  .relay { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--off-bg); display: flex; flex-direction: column; gap: 6px; }
+  .relay.on { background: var(--on-bg); border-color: var(--on); }
+  .relay button { width: 100%; font-weight: 600; }
+  .relay.on button { background: var(--on); border-color: var(--on); color: #fff; }
+  select { font: inherit; font-size: 13px; padding: 4px; border-radius: 6px; border: 1px solid var(--line);
+           background: var(--panel); color: var(--text); width: 100%; }
+  .relay .pin { font-size: 12px; color: var(--muted); text-align: center; }
+  .ana { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--off-bg); display: flex; flex-direction: column; gap: 6px; }
+  .ana.moving { border: 2px solid var(--warn); }
+  .ana .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ana .sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar > div { height: 100%; background: var(--accent); width: 0%; }
+  .pwmrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .pwmrow input[type=range] { flex: 1 1 260px; }
+  .pwmrow .val { font-variant-numeric: tabular-nums; min-width: 140px; }
+  label.inline { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .note { font-size: 13px; color: var(--muted); }
+  .note b { color: var(--text); }
+  .warn { color: var(--warn); }
+  pre { margin: 0; max-height: 160px; overflow: auto; font: 12px/1.4 Consolas, monospace; color: var(--muted);
+        background: var(--off-bg); border-radius: 8px; padding: 8px; white-space: pre-wrap; word-break: break-all; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Alien PLC I/O <span class="status" id="status">ยังไม่เชื่อมต่อ</span></h1>
+    <span class="runbadge" id="run">RUN/STOP: -</span>
+    <button class="primary" id="connect">เชื่อมต่อ COM</button>
+    <button id="disconnect" disabled>ตัดการเชื่อมต่อ</button>
+  </header>
+
+  <p class="note" id="support"></p>
+
+  <section>
+    <h2>อินพุต X <span class="hint">ไฟเขียว = มีสัญญาณ</span>
+      <label class="inline"><input type="checkbox" id="activeLow" checked> แอคทีฟเมื่อขาเป็น LOW (แตะ X กับ 0V)</label>
+    </h2>
+    <div class="grid" id="inputs"></div>
+  </section>
+
+  <section>
+    <h2>รีเลย์เอาต์พุต <span class="hint">กดเพื่อเปิด/ปิด · คอมมอน: C0 = Y0–Y1, C1 = Y2–Y3, C2 = Y4–Y7</span>
+      <button id="allOff" disabled>ปิดทั้งหมด</button>
+    </h2>
+    <div class="grid" id="relays"></div>
+  </section>
+
+  <section>
+    <h2>หัวพินขยาย <span class="hint">GND · PWM · A1 · A0 · 3V</span></h2>
+    <div class="pwmrow">
+      <b>PWM (PA6)</b>
+      <input type="range" id="pwm" min="0" max="255" value="0" disabled>
+      <span class="val" id="pwmVal">0 / 255 (0%)</span>
+    </div>
+    <p class="note" style="margin:12px 0 6px">อนาล็อก: แตะหรือต่อแรงดันเข้า <b>A0</b> / <b>A1</b> แล้วดูว่าช่องไหนค่าเปลี่ยน (กรอบส้ม) แล้วเลือกชื่อให้ช่องนั้น</p>
+    <div class="grid wide" id="analogs"></div>
+    <p class="note" style="margin:8px 0 0">ค่าที่แสดงคือแรงดันที่ <b>ขาชิป</b> (0–3.3V) ถ้าบอร์ดมีวงจรแบ่งแรงดันสำหรับ 0–10V ค่าที่ขั้วจริงจะสูงกว่านี้ตามอัตราส่วน</p>
+  </section>
+
+  <section>
+    <h2>ไฟสถานะบนบอร์ด</h2>
+    <div class="grid" id="leds"></div>
+  </section>
+
+  <section>
+    <h2>ขาอื่น ๆ ที่ยังไม่รู้หน้าที่ <span class="hint">กรอบส้ม = เพิ่งเปลี่ยน · ตัวเลข = จำนวนครั้งที่เปลี่ยน</span>
+      <button id="resetCounts">ล้างตัวนับ</button>
+    </h2>
+    <div class="grid" id="others"></div>
+  </section>
+
+  <section>
+    <h2>Log <span class="hint">ข้อความล่าสุดจากบอร์ด</span></h2>
+    <pre id="log"></pre>
+  </section>
+
+  <p class="note">
+    ต้องใช้ <b>Microsoft Edge หรือ Google Chrome</b> และบอร์ดต้องรัน ตัวอย่าง <b>05_IOControl</b> (File → Examples → AlienPLC) ·
+    ปิด PuTTY / Serial Monitor ก่อนเชื่อมต่อ ·
+    ถ้าเชื่อมต่อไม่ได้ ให้ถอดสาย USB แล้วเสียบใหม่ หรือเปิด-ปิดพอร์ตด้วย Serial Monitor ที่ baud อื่นหนึ่งครั้ง แล้วลองใหม่ (บางสาย CH340 ไม่ยอมตั้ง baud เดิมซ้ำ)
+  </p>
+</main>
+
+<script>
+const X_NAMES = ['X0','X1','X2','X3','X4','X5','X6','X7','X10','X11','X12','X13'];
+const X_PINS  = ['PA0','PB3','PB4','PA1','PF1','PC14','PC15','PB9','PB7','PB6','PB5','PA15'];
+const R_PINS  = ['PA4','PA7','PB14','PB15','PA12','PA11','PF6','PF7'];
+const R_NAMES = ['Y0','Y1','Y2','Y3','Y4','Y5','Y6','Y7'];
+const Y_COMMON = ['C0','C0','C1','C1','C2','C2','C2','C2'];
+const L_PINS  = ['PB10','PB11'];
+const A_PINS  = ['PA2','PA3','PA5','PB0','PB1'];
+const A_CHOICES = ['?','A0','A1','ไฟเข้า','ไม่ใช่'];
+const VIN_SCALE = 11.37;   // PB1 supply monitor: 24V supply read ~2.11V at the pin (calibrate if needed)
+const U_PINS  = ['PA8','PA13','PA14','PB2','PB12','PB13','PC13','PF0'];
+
+let port = null, writer = null, reader = null, reading = false;
+let state = { x: null, r: '00000000', l: '00', run: null, p: 0, a: null };
+let uPrev = null, uCount = U_PINS.map(() => 0), uLastChange = U_PINS.map(() => 0);
+let aMin = A_PINS.map(() => Infinity), aMax = A_PINS.map(() => -Infinity), aLastMove = A_PINS.map(() => 0), aPrev = null;
+
+const $ = id => document.getElementById(id);
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+const A_SCALE = 3.0;   // header A0/A1 divider ≈ 1/3 (estimated from 3.3V → 1.10V)
+let aLabels = load('aLabels', ['ไม่ใช่', 'ไม่ใช่', 'A0', 'A1', 'ไฟเข้า']);
+if (aLabels[4] === '?') { aLabels[4] = 'ไฟเข้า'; store('aLabels', aLabels); }
+
+$('activeLow').checked = load('activeLow', true);
+$('activeLow').addEventListener('change', e => { store('activeLow', e.target.checked); render(); });
+
+function setStatus(text, cls) { const s = $('status'); s.textContent = text; s.className = 'status ' + (cls || ''); }
+function log(line) {
+  const el = $('log'); el.textContent += line + '\n';
+  const lines = el.textContent.split('\n'); if (lines.length > 60) el.textContent = lines.slice(-60).join('\n');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ---- build UI ----
+X_NAMES.forEach((n, i) => {
+  const d = document.createElement('div'); d.className = 'lamp'; d.id = 'x' + i;
+  d.innerHTML = `<span class="dot"></span><div class="name">${n}</div><div class="pin">${X_PINS[i]}</div>`;
+  $('inputs').appendChild(d);
+});
+R_PINS.forEach((p, i) => {
+  const d = document.createElement('div'); d.className = 'relay'; d.id = 'r' + i;
+  const b = document.createElement('button'); b.disabled = true;
+  b.addEventListener('click', () => send(`R${i}${state.r[i] === '1' ? 0 : 1}`));
+  const pin = document.createElement('div'); pin.className = 'pin';
+  pin.textContent = `ขา ${p} · ต่อกับ ${Y_COMMON[i]} ตอน ON`;
+  d.append(b, pin); $('relays').appendChild(d);
+});
+L_PINS.forEach((p, i) => {
+  const d = document.createElement('div'); d.className = 'relay'; d.id = 'l' + i;
+  const b = document.createElement('button'); b.disabled = true;
+  b.addEventListener('click', () => send(`L${i}${state.l[i] === '1' ? 0 : 1}`));
+  const pin = document.createElement('div'); pin.className = 'pin'; pin.textContent = `LED ${i + 1} · ขา ${p}`;
+  d.append(b, pin); $('leds').appendChild(d);
+});
+A_PINS.forEach((p, i) => {
+  const d = document.createElement('div'); d.className = 'ana'; d.id = 'a' + i;
+  d.innerHTML = `<div class="sub">ขา ${p}</div><div class="v" id="av${i}">- V</div>
+    <div class="bar"><div id="ab${i}"></div></div><div class="sub" id="ar${i}">raw -</div>`;
+  const sel = document.createElement('select');
+  A_CHOICES.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c === '?' ? 'ยังไม่รู้ (?)' : c; sel.appendChild(o); });
+  sel.value = aLabels[i] || '?';
+  sel.addEventListener('change', () => { aLabels[i] = sel.value; store('aLabels', aLabels); });
+  d.appendChild(sel); $('analogs').appendChild(d);
+});
+U_PINS.forEach((p, i) => {
+  const d = document.createElement('div'); d.className = 'lamp'; d.id = 'u' + i;
+  d.innerHTML = `<span class="dot"></span><div class="name">${p}</div><div class="pin" id="uv${i}">-</div><div class="cnt" id="uc${i}"></div>`;
+  $('others').appendChild(d);
+});
+$('allOff').addEventListener('click', () => send('A'));
+$('resetCounts').addEventListener('click', () => {
+  uCount = U_PINS.map(() => 0);
+  aMin = A_PINS.map(() => Infinity); aMax = A_PINS.map(() => -Infinity);
+  renderOthers(null); renderAnalog(null);
+});
+let pwmTimer = null;
+$('pwm').addEventListener('input', e => {
+  const v = +e.target.value; showPwm(v);
+  clearTimeout(pwmTimer); pwmTimer = setTimeout(() => send('P' + v), 60);
+});
+function showPwm(v) { $('pwmVal').textContent = `${v} / 255 (${Math.round(v / 2.55)}%)`; }
+
+function render() {
+  const al = $('activeLow').checked;
+  X_NAMES.forEach((n, i) => {
+    const raw = state.x && state.x[i] === '1';
+    $('x' + i).classList.toggle('on', state.x ? (al ? !raw : raw) : false);
+  });
+  R_PINS.forEach((p, i) => {
+    const on = state.r[i] === '1'; const el = $('r' + i);
+    el.classList.toggle('on', on);
+    el.querySelector('button').textContent = `${R_NAMES[i]}: ${on ? 'ON' : 'OFF'}`;
+  });
+  L_PINS.forEach((p, i) => {
+    const on = state.l[i] === '1'; const el = $('l' + i);
+    el.classList.toggle('on', on);
+    el.querySelector('button').textContent = `LED ${i + 1}: ${on ? 'ON' : 'OFF'}`;
+  });
+  const rb = $('run');
+  rb.textContent = state.run === null ? 'RUN/STOP: -' : (state.run ? 'RUN' : 'STOP');
+  rb.className = 'runbadge' + (state.run === null ? '' : state.run ? ' run' : ' stop');
+  if (document.activeElement !== $('pwm')) { $('pwm').value = state.p; showPwm(state.p); }
+}
+
+function renderAnalog(a) {
+  const now = Date.now();
+  if (a) {
+    a.forEach((v, i) => {
+      aMin[i] = Math.min(aMin[i], v); aMax[i] = Math.max(aMax[i], v);
+      if (aPrev && Math.abs(v - aPrev[i]) > 80) aLastMove[i] = now;
+    });
+    aPrev = a;
+  }
+  A_PINS.forEach((p, i) => {
+    const v = aPrev ? aPrev[i] : null;
+    $('a' + i).classList.toggle('moving', now - aLastMove[i] < 3000);
+    $('av' + i).textContent = v === null ? '- V' : (v * 3.3 / 4095).toFixed(2) + ' V';
+    $('ab' + i).style.width = v === null ? '0%' : (v / 40.95).toFixed(1) + '%';
+    const isIn = aLabels[i] === 'A0' || aLabels[i] === 'A1';
+    $('ar' + i).textContent = v === null ? 'raw -' :
+      (isIn ? `ที่ขั้ว ≈ ${(v * 3.3 / 4095 * A_SCALE).toFixed(2)} V · ` : '') +
+      (aLabels[i] === 'ไฟเข้า' ? `ไฟเลี้ยง ≈ ${(v * 3.3 / 4095 * VIN_SCALE).toFixed(1)} V · ` : '') +
+      `raw ${v} · ช่วง ${aMin[i] === Infinity ? '-' : aMin[i]}–${aMax[i] === -Infinity ? '-' : aMax[i]}`;
+  });
+}
+
+function renderOthers(u) {
+  const now = Date.now();
+  if (u) {
+    if (uPrev) for (let i = 0; i < U_PINS.length; i++) if (u[i] !== uPrev[i]) { uCount[i]++; uLastChange[i] = now; }
+    uPrev = u;
+  }
+  U_PINS.forEach((p, i) => {
+    const el = $('u' + i); const v = uPrev ? uPrev[i] : null;
+    el.classList.toggle('on', v === '1');
+    el.classList.toggle('recent', now - uLastChange[i] < 3000);
+    $('uv' + i).textContent = v === null ? '-' : (v === '1' ? 'HIGH' : 'LOW');
+    $('uc' + i).textContent = uCount[i] ? `เปลี่ยน ${uCount[i]} ครั้ง` : '';
+  });
+}
+render(); renderAnalog(null); renderOthers(null);
+setInterval(() => { renderOthers(null); renderAnalog(null); }, 500);
+
+// ---- serial ----
+const supported = 'serial' in navigator;
+$('support').innerHTML = supported ? '' :
+  '<span class="warn">เบราว์เซอร์นี้ไม่รองรับ Web Serial — เปิดไฟล์นี้ด้วย Microsoft Edge หรือ Google Chrome</span>';
+$('connect').disabled = !supported;
+
+async function send(cmd) {
+  if (!writer) return;
+  try { await writer.write(new TextEncoder().encode(cmd + '\n')); }
+  catch (e) { log('send error: ' + e.message); }
+}
+
+function setConnected(on) {
+  $('connect').disabled = on || !supported; $('disconnect').disabled = !on; $('allOff').disabled = !on;
+  $('pwm').disabled = !on;
+  document.querySelectorAll('#relays button, #leds button').forEach(b => b.disabled = !on);
+}
+
+$('connect').addEventListener('click', async () => {
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' });
+  } catch (e) {
+    setStatus('เปิดพอร์ตไม่ได้: ' + e.message + ' (ปิด PuTTY แล้วรัน prep_com6.bat ก่อน)', 'err');
+    port = null; return;
+  }
+  writer = port.writable.getWriter();
+  setConnected(true); setStatus('เชื่อมต่อแล้ว · รอข้อมูลจากบอร์ด...', 'ok');
+  send('?');
+  readLoop();
+});
+$('disconnect').addEventListener('click', disconnect);
+
+async function disconnect() {
+  reading = false;
+  try { if (reader) await reader.cancel(); } catch (e) {}
+  try { if (writer) writer.releaseLock(); } catch (e) {}
+  try { if (port) await port.close(); } catch (e) {}
+  reader = writer = port = null;
+  setConnected(false); setStatus('ยังไม่เชื่อมต่อ');
+}
+
+function parseStatus(line) {
+  if (!line.startsWith('S ')) return false;
+  const f = {};
+  line.slice(2).trim().split(/\s+/).forEach(kv => { const k = kv.indexOf('='); if (k > 0) f[kv.slice(0, k)] = kv.slice(k + 1); });
+  if (!/^[01]{12}$/.test(f.X || '') || !/^[01]{8}$/.test(f.R || '')) return false;
+  state.x = f.X; state.r = f.R; state.l = /^[01]{2}$/.test(f.L || '') ? f.L : state.l;
+  state.run = f.RUN === undefined ? null : f.RUN === '1';
+  state.p = f.P === undefined ? state.p : (+f.P || 0);
+  render();
+  if (f.A) { const a = f.A.split(',').map(Number); if (a.length === A_PINS.length && a.every(n => !isNaN(n))) renderAnalog(a); }
+  if (f.U && f.U.length === U_PINS.length) renderOthers(f.U);
+  return true;
+}
+
+async function readLoop() {
+  reading = true; let buf = ''; const dec = new TextDecoder();
+  let lastData = Date.now();
+  const watchdog = setInterval(() => {
+    if (reading && Date.now() - lastData > 2000) setStatus('เชื่อมต่อแล้ว แต่ไม่ได้รับข้อมูล — บอร์ดรัน IOControl อยู่ไหม?', 'err');
+  }, 1000);
+  try {
+    reader = port.readable.getReader();
+    while (reading) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).replace(/\r$/, ''); buf = buf.slice(i + 1);
+        lastData = Date.now();
+        if (parseStatus(line)) setStatus('เชื่อมต่อแล้ว', 'ok');
+        else if (line.trim()) log(line);
+      }
+    }
+  } catch (e) { log('read error: ' + e.message); }
+  finally { clearInterval(watchdog); try { reader && reader.releaseLock(); } catch (e) {} }
+  if (reading) disconnect();
+}
+</script>
+</body>
+</html>

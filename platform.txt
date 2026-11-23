@@ -1,0 +1,19 @@
+# Alien Labs boards
+# Build recipes are inherited from the referenced STMicroelectronics STM32 core
+# (boards.txt: build.core=STMicroelectronics:arduino). This file only adds the upload tool.
+
+name=Alien Labs Boards
+version=1.0.0
+
+# ---------------------------------------------------------------------------
+# Upload: send "!BOOT" to the running program (no BOOT0 jumper), then flash over the
+# MCU's ROM serial bootloader on USART1 (DB9 / J3). Windows (PowerShell) for now.
+# ---------------------------------------------------------------------------
+tools.alienplc_upload.path={runtime.platform.path}/tools
+tools.alienplc_upload.cmd=alien_upload.ps1
+
+tools.alienplc_upload.upload.params.verbose=
+tools.alienplc_upload.upload.params.quiet=
+tools.alienplc_upload.upload.pattern=powershell -NoProfile -ExecutionPolicy Bypass -File "{path}/{cmd}" -Port "{serial.port}" -Bin "{build.path}/{build.project_name}.bin"
+tools.alienplc_upload.upload.pattern.linux=echo "Alien PLC upload tool currently supports Windows only"
+tools.alienplc_upload.upload.pattern.macosx=echo "Alien PLC upload tool currently supports Windows only"

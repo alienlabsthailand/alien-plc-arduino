@@ -1,0 +1,42 @@
+# Alien Labs boards
+# Requires the STMicroelectronics STM32 core (STMicroelectronics:stm32, 3.x) to be installed:
+# the compiler recipes, core and HAL come from it; this package adds the board variant and upload tool.
+
+menu.xserial=U(S)ART support
+menu.opt=Optimize
+
+##############################################################################
+# Alien PLC 20MR (Geehy APM32F030C8T6 / STM32F030C8 compatible)
+alienplc20mr.name=Alien PLC 20MR (12 in / 8 relay)
+
+alienplc20mr.build.core=STMicroelectronics:arduino
+alienplc20mr.build.variant=ALIEN_PLC_20MR
+alienplc20mr.build.variant_h=variant_ALIEN_PLC_20MR.h
+alienplc20mr.build.board=ALIEN_PLC_20MR
+alienplc20mr.build.mcu=cortex-m0
+alienplc20mr.build.series=STM32F0xx
+alienplc20mr.build.product_line=STM32F030x8
+alienplc20mr.build.st_extra_flags=-D{build.product_line} {build.enable_usb} {build.xSerial}
+alienplc20mr.build.flash_offset=0x0
+alienplc20mr.build.enable_usb=
+alienplc20mr.build.ldscript=ldscript.ld
+
+alienplc20mr.upload.maximum_size=65536
+alienplc20mr.upload.maximum_data_size=8192
+alienplc20mr.upload.tool=alienplc_upload
+alienplc20mr.upload.tool.default=alienplc_upload
+alienplc20mr.upload.tool.serial=alienplc_upload
+alienplc20mr.upload.protocol=serial
+alienplc20mr.upload.speed=9600
+
+alienplc20mr.debug.svd_file={runtime.tools.STM32_SVD.path}/svd/STM32F0xx/STM32F0x0.svd
+
+alienplc20mr.menu.xserial.generic=Enabled (generic 'Serial' on DB9)
+alienplc20mr.menu.xserial.generic.build.xSerial=-DHAL_UART_MODULE_ENABLED
+
+alienplc20mr.menu.opt.osstd=Smallest (-Os default)
+alienplc20mr.menu.opt.osstd.build.flags.optimize=-Os
+alienplc20mr.menu.opt.o2std=Faster (-O2)
+alienplc20mr.menu.opt.o2std.build.flags.optimize=-O2
+alienplc20mr.menu.opt.ogstd=Debug (-Og)
+alienplc20mr.menu.opt.ogstd.build.flags.optimize=-Og
